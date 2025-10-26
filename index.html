@@ -999,644 +999,855 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // DOM Elements
-        const cityInput = document.getElementById('city-input');
-        const searchBtn = document.getElementById('search-btn');
-        const celsiusBtn = document.getElementById('celsius-btn');
-        const fahrenheitBtn = document.getElementById('fahrenheit-btn');
-        const themeToggle = document.getElementById('theme-toggle');
-        const loading = document.getElementById('loading');
-        const errorMessage = document.getElementById('error-message');
-        const mainContent = document.getElementById('main-content');
-        const currentWeather = document.getElementById('current-weather');
-        const forecastContainer = document.getElementById('forecast-container');
-        const hourlyContainer = document.getElementById('hourly-container');
-        const recentList = document.getElementById('recent-list');
-        const errorText = document.getElementById('error-text');
-        const locateMeBtn = document.getElementById('locate-me');
-        const resetMapBtn = document.getElementById('reset-map');
-        const toggleSatelliteBtn = document.getElementById('toggle-satellite');
-        
-        // Weather elements
-        const cityName = document.getElementById('city-name');
-        const dateElement = document.getElementById('date');
-        const temperature = document.getElementById('temperature');
-        const weatherIcon = document.getElementById('weather-icon');
-        const description = document.getElementById('description');
-        const feelsLike = document.getElementById('feels-like');
-        const humidity = document.getElementById('humidity');
-        const windSpeed = document.getElementById('wind-speed');
-        const pressure = document.getElementById('pressure');
-        
-        // Additional info elements
-        const visibility = document.getElementById('visibility');
-        const cloudiness = document.getElementById('cloudiness');
-        const uvIndex = document.getElementById('uv-index');
-        const dewPoint = document.getElementById('dew-point');
-        const windDirection = document.getElementById('wind-direction');
-        const windGust = document.getElementById('wind-gust');
-        const sunrise = document.getElementById('sunrise');
-        const sunset = document.getElementById('sunset');
-        const dayLength = document.getElementById('day-length');
-        const solarNoon = document.getElementById('solar-noon');
-        const moonPhase = document.getElementById('moon-phase');
-        const timezone = document.getElementById('timezone');
-        
-        // Air Quality elements
-        const aqiValue = document.getElementById('aqi-value');
-        const aqiTitle = document.getElementById('aqi-title');
-        const aqiDescription = document.getElementById('aqi-description');
-        const pm25 = document.getElementById('pm25');
-        const pm10 = document.getElementById('pm10');
-        const o3 = document.getElementById('o3');
-        const no2 = document.getElementById('no2');
-        const so2 = document.getElementById('so2');
-        const co = document.getElementById('co');
-        
-        // API Configuration
-        const apiKey = 'da4a9d4bfe1e511f5079b8c1aad61593';
-        let currentUnit = 'metric'; // Default to Celsius
-        
-        // Map variables
-        let map;
-        let currentMarker;
-        let isSatelliteView = false;
-        let defaultTileLayer;
-        let satelliteTileLayer;
-        
-        // Recent searches
-        let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || [];
-        
-        // Initialize the map
-        function initMap(lat = 40.7128, lon = -74.0060, zoom = 10) {
-            if (map) {
-                map.remove();
-            }
+            const cityInput = document.getElementById('city-input');
+const searchBtn = document.getElementById('search-btn');
+const celsiusBtn = document.getElementById('celsius-btn');
+const fahrenheitBtn = document.getElementById('fahrenheit-btn');
+const themeToggle = document.getElementById('theme-toggle');
+const loading = document.getElementById('loading');
+const errorMessage = document.getElementById('error-message');
+const mainContent = document.getElementById('main-content');
+const currentWeather = document.getElementById('current-weather');
+const forecastContainer = document.getElementById('forecast-container');
+const hourlyContainer = document.getElementById('hourly-container');
+const recentList = document.getElementById('recent-list');
+const errorText = document.getElementById('error-text');
+const locateMeBtn = document.getElementById('locate-me');
+const resetMapBtn = document.getElementById('reset-map');
+const toggleSatelliteBtn = document.getElementById('toggle-satellite');
+
+let currentWeatherData = null;
+let currentForecastData = null;
+let currentUnit = 'metric'; 
+
+// Weather elements
+const cityName = document.getElementById('city-name');
+const dateElement = document.getElementById('date');
+const temperature = document.getElementById('temperature');
+const weatherIcon = document.getElementById('weather-icon');
+const description = document.getElementById('description');
+const feelsLike = document.getElementById('feels-like');
+const humidity = document.getElementById('humidity');
+const windSpeed = document.getElementById('wind-speed');
+const pressure = document.getElementById('pressure');
+
+// Additional info elements
+const visibility = document.getElementById('visibility');
+const cloudiness = document.getElementById('cloudiness');
+const uvIndex = document.getElementById('uv-index');
+const dewPoint = document.getElementById('dew-point');
+const windDirection = document.getElementById('wind-direction');
+const windGust = document.getElementById('wind-gust');
+const sunrise = document.getElementById('sunrise');
+const sunset = document.getElementById('sunset');
+const dayLength = document.getElementById('day-length');
+const solarNoon = document.getElementById('solar-noon');
+const moonPhase = document.getElementById('moon-phase');
+const timezone = document.getElementById('timezone');
+
+// Air Quality elements
+const aqiValue = document.getElementById('aqi-value');
+const aqiTitle = document.getElementById('aqi-title');
+const aqiDescription = document.getElementById('aqi-description');
+const pm25 = document.getElementById('pm25');
+const pm10 = document.getElementById('pm10');
+const o3 = document.getElementById('o3');
+const no2 = document.getElementById('no2');
+const so2 = document.getElementById('so2');
+const co = document.getElementById('co');
+
+// API Configuration
+const apiKey = 'da4a9d4bfe1e511f5079b8c1aad61593';
+
+// Map variables
+let map;
+let currentMarker;
+let isSatelliteView = false;
+let defaultTileLayer;
+let satelliteTileLayer;
+
+// Recent searches
+let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || [];
+
+// Initialize the map
+function initMap(lat = 40.7128, lon = -74.0060, zoom = 10) {
+    if (map) {
+        map.remove();
+    }
+    
+    // Create the map
+    map = L.map('map').setView([lat, lon], zoom);
+    
+    // Define tile layers
+    defaultTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+    
+    satelliteTileLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; <a href="https://maps.google.com">Google Maps</a>'
+    });
+    
+    // Add default tile layer to map
+    defaultTileLayer.addTo(map);
+    
+    // Add marker for current location
+    updateMapMarker(lat, lon, cityName.textContent);
+}
+
+// Update map marker
+function updateMapMarker(lat, lon, cityName) {
+    // Remove existing marker
+    if (currentMarker) {
+        map.removeLayer(currentMarker);
+    }
+    
+    // Create custom icon
+    const customIcon = L.divIcon({
+        html: `<div style="background-color: #4a6cf7; color: white; padding: 8px; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                  <i class="fas fa-map-marker-alt"></i>
+               </div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+        className: 'custom-marker'
+    });
+    
+    // Add new marker
+    currentMarker = L.marker([lat, lon], { icon: customIcon })
+        .addTo(map)
+        .bindPopup(`<b>${cityName}</b><br>Current weather location`)
+        .openPopup();
+    
+    // Pan to the new location
+    map.panTo([lat, lon]);
+}
+
+// Toggle satellite view
+function toggleSatelliteView() {
+    if (isSatelliteView) {
+        map.removeLayer(satelliteTileLayer);
+        defaultTileLayer.addTo(map);
+        toggleSatelliteBtn.innerHTML = '<i class="fas fa-satellite"></i> Toggle Satellite';
+    } else {
+        map.removeLayer(defaultTileLayer);
+        satelliteTileLayer.addTo(map);
+        toggleSatelliteBtn.innerHTML = '<i class="fas fa-map"></i> Toggle Map';
+    }
+    isSatelliteView = !isSatelliteView;
+}
+
+// Get user's current location
+function locateUser() {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser');
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+        position => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
             
-            // Create the map
-            map = L.map('map').setView([lat, lon], zoom);
+            // Update map view
+            map.setView([lat, lon], 12);
+            updateMapMarker(lat, lon, 'Your Location');
             
-            // Define tile layers
-            defaultTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            });
-            
-            satelliteTileLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-                maxZoom: 20,
-                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-                attribution: '&copy; <a href="https://maps.google.com">Google Maps</a>'
-            });
-            
-            // Add default tile layer to map
-            defaultTileLayer.addTo(map);
-            
-            // Add marker for current location
-            updateMapMarker(lat, lon, cityName.textContent);
-        }
-        
-        // Update map marker
-        function updateMapMarker(lat, lon, cityName) {
-            // Remove existing marker
-            if (currentMarker) {
-                map.removeLayer(currentMarker);
-            }
-            
-            // Create custom icon
-            const customIcon = L.divIcon({
-                html: `<div style="background-color: #4a6cf7; color: white; padding: 8px; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
-                          <i class="fas fa-map-marker-alt"></i>
-                       </div>`,
-                iconSize: [40, 40],
-                iconAnchor: [20, 40],
-                className: 'custom-marker'
-            });
-            
-            // Add new marker
-            currentMarker = L.marker([lat, lon], { icon: customIcon })
-                .addTo(map)
-                .bindPopup(`<b>${cityName}</b><br>Current weather location`)
-                .openPopup();
-            
-            // Pan to the new location
-            map.panTo([lat, lon]);
-        }
-        
-        // Toggle satellite view
-        function toggleSatelliteView() {
-            if (isSatelliteView) {
-                map.removeLayer(satelliteTileLayer);
-                defaultTileLayer.addTo(map);
-                toggleSatelliteBtn.innerHTML = '<i class="fas fa-satellite"></i> Toggle Satellite';
-            } else {
-                map.removeLayer(defaultTileLayer);
-                satelliteTileLayer.addTo(map);
-                toggleSatelliteBtn.innerHTML = '<i class="fas fa-map"></i> Toggle Map';
-            }
-            isSatelliteView = !isSatelliteView;
-        }
-        
-        // Get user's current location
-        function locateUser() {
-            if (!navigator.geolocation) {
-                alert('Geolocation is not supported by your browser');
-                return;
-            }
-            
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    
-                    // Update map view
-                    map.setView([lat, lon], 12);
-                    updateMapMarker(lat, lon, 'Your Location');
-                    
-                    // Reverse geocode to get city name (using a free service)
-                    fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.city) {
-                                cityInput.value = data.city;
-                                fetchWeatherData(data.city);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error getting location name:', error);
-                        });
-                },
-                error => {
-                    alert('Unable to retrieve your location. Please check your browser permissions.');
-                    console.error('Geolocation error:', error);
-                }
-            );
-        }
-        
-        // Add to recent searches
-        function addToRecentSearches(city) {
-            // Remove if already exists
-            recentSearches = recentSearches.filter(item => item !== city);
-            
-            // Add to beginning
-            recentSearches.unshift(city);
-            
-            // Keep only last 5 searches
-            if (recentSearches.length > 5) {
-                recentSearches = recentSearches.slice(0, 5);
-            }
-            
-            // Save to localStorage
-            localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
-            
-            // Update UI
-            updateRecentSearchesUI();
-        }
-        
-        // Update recent searches UI
-        function updateRecentSearchesUI() {
-            recentList.innerHTML = '';
-            
-            recentSearches.forEach(city => {
-                const recentItem = document.createElement('div');
-                recentItem.className = 'recent-item';
-                recentItem.innerHTML = `<i class="fas fa-history"></i> ${city}`;
-                recentItem.addEventListener('click', () => {
-                    cityInput.value = city;
-                    fetchWeatherData(city);
+            // Reverse geocode to get city name
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.city) {
+                        cityInput.value = data.city;
+                        fetchWeatherData(data.city);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error getting location name:', error);
                 });
-                recentList.appendChild(recentItem);
-            });
+        },
+        error => {
+            alert('Unable to retrieve your location. Please check your browser permissions.');
+            console.error('Geolocation error:', error);
         }
-        
-        // Theme management
-        const currentTheme = localStorage.getItem('theme') || 'light';
-        document.body.classList.toggle('dark-theme', currentTheme === 'dark');
-        updateThemeIcon();
-        
-        // Format current date
-        function formatDate() {
-            const now = new Date();
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            return now.toLocaleDateString('en-US', options);
-        }
-        
-        // Update date on load
-        dateElement.textContent = formatDate();
-        
-        // Weather icon mapping
-        const iconMap = {
-            '01d': 'fas fa-sun',
-            '01n': 'fas fa-moon',
-            '02d': 'fas fa-cloud-sun',
-            '02n': 'fas fa-cloud-moon',
-            '03d': 'fas fa-cloud',
-            '03n': 'fas fa-cloud',
-            '04d': 'fas fa-cloud',
-            '04n': 'fas fa-cloud',
-            '09d': 'fas fa-cloud-rain',
-            '09n': 'fas fa-cloud-rain',
-            '10d': 'fas fa-cloud-sun-rain',
-            '10n': 'fas fa-cloud-moon-rain',
-            '11d': 'fas fa-bolt',
-            '11n': 'fas fa-bolt',
-            '13d': 'fas fa-snowflake',
-            '13n': 'fas fa-snowflake',
-            '50d': 'fas fa-smog',
-            '50n': 'fas fa-smog'
-        };
-        
-        // Forecast day names
-        function getDayName(offset) {
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const today = new Date().getDay();
-            return days[(today + offset) % 7];
-        }
-        
-        // Update theme icon based on current theme
-        function updateThemeIcon() {
-            const icon = themeToggle.querySelector('i');
-            if (document.body.classList.contains('dark-theme')) {
-                icon.className = 'fas fa-sun';
-            } else {
-                icon.className = 'fas fa-moon';
-            }
-        }
-        
-        // Toggle theme
-        themeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark-theme');
-            const theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
-            localStorage.setItem('theme', theme);
-            updateThemeIcon();
+    );
+}
+
+// Add to recent searches
+function addToRecentSearches(city) {
+    // Remove if already exists
+    recentSearches = recentSearches.filter(item => item !== city);
+    
+    // Add to beginning
+    recentSearches.unshift(city);
+    
+    // Keep only last 5 searches
+    if (recentSearches.length > 5) {
+        recentSearches = recentSearches.slice(0, 5);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+    
+    // Update UI
+    updateRecentSearchesUI();
+}
+
+// Update recent searches UI
+function updateRecentSearchesUI() {
+    recentList.innerHTML = '';
+    
+    recentSearches.forEach(city => {
+        const recentItem = document.createElement('div');
+        recentItem.className = 'recent-item';
+        recentItem.innerHTML = `<i class="fas fa-history"></i> ${city}`;
+        recentItem.addEventListener('click', () => {
+            cityInput.value = city;
+            fetchWeatherData(city);
         });
+        recentList.appendChild(recentItem);
+    });
+}
+
+// Theme management
+const currentTheme = localStorage.getItem('theme') || 'light';
+document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+updateThemeIcon();
+
+// Format current date
+function formatDate() {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return now.toLocaleDateString('en-US', options);
+}
+
+// Update date on load
+dateElement.textContent = formatDate();
+
+// Weather icon mapping
+const iconMap = {
+    '01d': 'fas fa-sun',
+    '01n': 'fas fa-moon',
+    '02d': 'fas fa-cloud-sun',
+    '02n': 'fas fa-cloud-moon',
+    '03d': 'fas fa-cloud',
+    '03n': 'fas fa-cloud',
+    '04d': 'fas fa-cloud',
+    '04n': 'fas fa-cloud',
+    '09d': 'fas fa-cloud-rain',
+    '09n': 'fas fa-cloud-rain',
+    '10d': 'fas fa-cloud-sun-rain',
+    '10n': 'fas fa-cloud-moon-rain',
+    '11d': 'fas fa-bolt',
+    '11n': 'fas fa-bolt',
+    '13d': 'fas fa-snowflake',
+    '13n': 'fas fa-snowflake',
+    '50d': 'fas fa-smog',
+    '50n': 'fas fa-smog'
+};
+
+// Forecast day names
+function getDayName(offset) {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = new Date().getDay();
+    return days[(today + offset) % 7];
+}
+
+// Update theme icon based on current theme
+function updateThemeIcon() {
+    const icon = themeToggle.querySelector('i');
+    if (document.body.classList.contains('dark-theme')) {
+        icon.className = 'fas fa-sun';
+    } else {
+        icon.className = 'fas fa-moon';
+    }
+}
+
+// Toggle theme
+themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('dark-theme');
+    const theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+    localStorage.setItem('theme', theme);
+    updateThemeIcon();
+});
+
+// Unit conversion functions
+function celsiusToFahrenheit(celsius) {
+   return (celsius * 9/5) + 32;
+}
+
+function kmhToMph(kmh) {
+    return kmh * 0.621371;
+}
+
+function hPaToInHg(hPa) {
+    return hPa * 0.02953;
+}
+
+// Update units
+function updateUnits() {
+    const activeBtn = currentUnit === 'metric' ? celsiusBtn : fahrenheitBtn;
+    const inactiveBtn = currentUnit === 'metric' ? fahrenheitBtn : celsiusBtn;
+    
+    activeBtn.classList.add('active');
+    inactiveBtn.classList.remove('active');
+    
+    // Update ALL weather displays with current data using the new unit
+    if (currentWeatherData) {
+        updateWeatherUI(currentWeatherData);
+    }
+    
+    if (currentForecastData) {
+        updateForecastUI(currentForecastData);
+        updateHourlyForecastUI(currentForecastData);
+    }
+}
+
+// Unit toggle event listeners
+celsiusBtn.addEventListener('click', () => {
+    currentUnit = 'metric';
+    updateUnits();
+});
+
+fahrenheitBtn.addEventListener('click', () => {
+    currentUnit = 'imperial';
+    updateUnits();
+});
+
+// Map control event listeners
+locateMeBtn.addEventListener('click', locateUser);
+resetMapBtn.addEventListener('click', () => {
+    if (currentMarker) {
+        const latLng = currentMarker.getLatLng();
+        map.setView([latLng.lat, latLng.lng], 10);
+    } else {
+        map.setView([40.7128, -74.0060], 10);
+    }
+});
+toggleSatelliteBtn.addEventListener('click', toggleSatelliteView);
+
+// Real API function for current weather
+async function fetchWeatherData(city) {
+    try {
+        // Show loading state
+        loading.style.display = 'block';
+        errorMessage.style.display = 'none';
+        mainContent.style.display = 'none';
         
-        // Unit conversion functions
-        function celsiusToFahrenheit(celsius) {
-            return (celsius * 9/5) + 32;
+        // Always fetch in metric, we'll convert locally
+        const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
+        );
+        
+        if (!response.ok) {
+            throw new Error('City not found. Please check the spelling and try again.');
         }
         
-        function kmhToMph(kmh) {
-            return kmh * 0.621371;
-        }
+        const data = await response.json();
         
-        function hPaToInHg(hPa) {
-            return hPa * 0.02953;
-        }
-        
-        // Update units
-        function updateUnits() {
-            const activeBtn = currentUnit === 'metric' ? celsiusBtn : fahrenheitBtn;
-            const inactiveBtn = currentUnit === 'metric' ? fahrenheitBtn : celsiusBtn;
-            
-            activeBtn.classList.add('active');
-            inactiveBtn.classList.remove('active');
-            
-            // If we have weather data, convert and update it
-            if (cityInput.value.trim()) {
-                fetchWeatherData(cityInput.value.trim());
-            }
-        }
-        
-        // Event listeners for unit toggles
-        celsiusBtn.addEventListener('click', () => {
-            currentUnit = 'metric';
-            updateUnits();
-        });
-        
-        fahrenheitBtn.addEventListener('click', () => {
-            currentUnit = 'imperial';
-            updateUnits();
-        });
-        
-        // Map control event listeners
-        locateMeBtn.addEventListener('click', locateUser);
-        resetMapBtn.addEventListener('click', () => {
-            if (currentMarker) {
-                const latLng = currentMarker.getLatLng();
-                map.setView([latLng.lat, latLng.lng], 10);
-            } else {
-                map.setView([40.7128, -74.0060], 10);
-            }
-        });
-        toggleSatelliteBtn.addEventListener('click', toggleSatelliteView);
-        
-        // Real API function for current weather
-        async function fetchWeatherData(city) {
-            try {
-                // Show loading state
-                loading.style.display = 'block';
-                errorMessage.style.display = 'none';
-                mainContent.style.display = 'none';
-                
-                const response = await fetch(
-                    `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=${currentUnit}`
-                );
-                
-                if (!response.ok) {
-                    throw new Error('City not found. Please check the spelling and try again.');
-                }
-                
-                const data = await response.json();
-                
-                // Hide loading and show content
-                loading.style.display = 'none';
-                mainContent.style.display = 'grid';
-                
-                // Update UI with weather data
-                updateWeatherUI(data);
-                
-                // Update map with new location
-                updateMapMarker(data.coord.lat, data.coord.lon, data.name);
-                
-                // Add to recent searches
-                addToRecentSearches(city);
-                
-                // Fetch forecast data
-                fetchForecastData(data.coord.lat, data.coord.lon);
-                
-                // Fetch air quality data
-                fetchAirQualityData(data.coord.lat, data.coord.lon);
-                
-            } catch (error) {
-                loading.style.display = 'none';
-                errorText.textContent = error.message;
-                errorMessage.style.display = 'block';
-            }
-        }
-        
-        // Fetch 5-day forecast data
-        async function fetchForecastData(lat, lon) {
-            try {
-                const response = await fetch(
-                    `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=${currentUnit}`
-                );
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    updateForecastUI(data);
-                    updateHourlyForecastUI(data);
-                }
-            } catch (error) {
-                console.error('Error fetching forecast data:', error);
-            }
-        }
-        
-        // Fetch air quality data
-        async function fetchAirQualityData(lat, lon) {
-            try {
-                const response = await fetch(
-                    `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`
-                );
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    updateAirQualityUI(data);
-                }
-            } catch (error) {
-                console.error('Error fetching air quality data:', error);
-                // Set default values if API fails
-                setDefaultAirQuality();
-            }
-        }
-        
-        // Set default air quality values
-        function setDefaultAirQuality() {
-            aqiValue.textContent = '--';
-            aqiValue.style.backgroundColor = '#cccccc';
-            aqiTitle.textContent = 'Data unavailable';
-            aqiDescription.textContent = 'Air quality data is not available for this location.';
-            
-            pm25.textContent = '-- µg/m³';
-            pm10.textContent = '-- µg/m³';
-            o3.textContent = '-- µg/m³';
-            no2.textContent = '-- µg/m³';
-            so2.textContent = '-- µg/m³';
-            co.textContent = '-- mg/m³';
-        }
+        // Hide loading and show content
+        loading.style.display = 'none';
+        mainContent.style.display = 'grid';
         
         // Update UI with weather data
-        function updateWeatherUI(data) {
-            // Update main weather info
-            cityName.textContent = data.name;
-            temperature.textContent = `${Math.round(data.main.temp)}°${currentUnit === 'metric' ? 'C' : 'F'}`;
-            description.textContent = data.weather[0].description;
-            feelsLike.textContent = `${Math.round(data.main.feels_like)}°${currentUnit === 'metric' ? 'C' : 'F'}`;
-            humidity.textContent = `${data.main.humidity}%`;
-            
-            // Convert wind speed if needed
-            let windSpeedValue = data.wind.speed;
-            let windSpeedUnit = currentUnit === 'metric' ? 'km/h' : 'mph';
-            
-            if (currentUnit === 'imperial') {
-                windSpeedValue = kmhToMph(windSpeedValue).toFixed(1);
-            }
-            
-            windSpeed.textContent = `${windSpeedValue} ${windSpeedUnit}`;
-            
-            // Convert pressure if needed
-            let pressureValue = data.main.pressure;
-            let pressureUnit = 'hPa';
-            
-            if (currentUnit === 'imperial') {
-                pressureValue = hPaToInHg(pressureValue).toFixed(2);
-                pressureUnit = 'inHg';
-            }
-            
-            pressure.textContent = `${pressureValue} ${pressureUnit}`;
-            
-            // Update weather icon
-            const iconClass = iconMap[data.weather[0].icon] || 'fas fa-sun';
-            weatherIcon.className = iconClass;
-            
-            // Update additional info
-            visibility.textContent = `${(data.visibility / 1000).toFixed(1)} km`;
-            cloudiness.textContent = `${data.clouds.all}%`;
-            
-            // Convert wind direction from degrees to compass direction
-            const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-            const index = Math.round(data.wind.deg / 22.5) % 16;
-            windDirection.textContent = directions[index];
-            
-            // Calculate sunrise and sunset times
-            const sunriseTime = new Date(data.sys.sunrise * 1000);
-            const sunsetTime = new Date(data.sys.sunset * 1000);
-            sunrise.textContent = sunriseTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            sunset.textContent = sunsetTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            // Calculate day length
-            const dayLengthMs = sunsetTime - sunriseTime;
-            const hours = Math.floor(dayLengthMs / (1000 * 60 * 60));
-            const minutes = Math.floor((dayLengthMs % (1000 * 60 * 60)) / (1000 * 60));
-            dayLength.textContent = `${hours}h ${minutes}m`;
-            
-            // Calculate solar noon
-            const solarNoonTime = new Date(sunriseTime.getTime() + dayLengthMs / 2);
-            solarNoon.textContent = solarNoonTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            // Timezone
-            const timezoneOffset = data.timezone / 3600;
-            timezone.textContent = `UTC${timezoneOffset >= 0 ? '+' : ''}${timezoneOffset}`;
-            
-            // Mock values for data not available in current API
-            uvIndex.textContent = Math.floor(Math.random() * 10) + 1;
-            dewPoint.textContent = `${Math.round(data.main.temp - 5)}°${currentUnit === 'metric' ? 'C' : 'F'}`;
-            windGust.textContent = `${(windSpeedValue * 1.2).toFixed(1)} ${windSpeedUnit}`;
-            
-            // Mock moon phase (this would require a separate API)
-            const moonPhases = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 
-                               'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
-            moonPhase.textContent = moonPhases[Math.floor(Math.random() * moonPhases.length)];
+        updateWeatherUI(data);
+        
+        // Update map with new location
+        updateMapMarker(data.coord.lat, data.coord.lon, data.name);
+        
+        // Add to recent searches
+        addToRecentSearches(city);
+        
+        // Fetch forecast data
+        fetchForecastData(data.coord.lat, data.coord.lon);
+        
+        // Fetch air quality data
+        fetchAirQualityData(data.coord.lat, data.coord.lon);
+        
+    } catch (error) {
+        loading.style.display = 'none';
+        errorText.textContent = error.message;
+        errorMessage.style.display = 'block';
+    }
+}
+
+// Fetch 5-day forecast data
+async function fetchForecastData(lat, lon) {
+     try {
+        const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`
+        );
+        
+        if (response.ok) {
+            const data = await response.json();
+            currentForecastData = data;
+            updateForecastUI(data);
+            updateHourlyForecastUI(data);
+        } else {
+            console.error('Forecast API response not OK:', response.status);
+        }
+    } catch (error) {
+        console.error('Error fetching forecast data:', error);
+    }
+}
+
+// Fetch air quality data
+async function fetchAirQualityData(lat, lon) {
+    try {
+        const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`
+        );
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateAirQualityUI(data);
+        }
+    } catch (error) {
+        console.error('Error fetching air quality data:', error);
+        // Set default values if API fails
+        setDefaultAirQuality();
+    }
+}
+
+// Set default air quality values
+function setDefaultAirQuality() {
+    aqiValue.textContent = '--';
+    aqiValue.style.backgroundColor = '#cccccc';
+    aqiTitle.textContent = 'Data unavailable';
+    aqiDescription.textContent = 'Air quality data is not available for this location.';
+    
+    pm25.textContent = '-- µg/m³';
+    pm10.textContent = '-- µg/m³';
+    o3.textContent = '-- µg/m³';
+    no2.textContent = '-- µg/m³';
+    so2.textContent = '-- µg/m³';
+    co.textContent = '-- mg/m³';
+}
+
+// Update UI with weather data
+function updateWeatherUI(data) {
+     // Store the original data
+    currentWeatherData = data;
+    
+    // Convert temperatures based on current unit
+    let displayTemp, displayFeelsLike, displayDewPoint;
+    
+    if (currentUnit === 'metric') {
+        // Data is already in Celsius from API
+        displayTemp = Math.round(data.main.temp);
+        displayFeelsLike = Math.round(data.main.feels_like);
+        displayDewPoint = Math.round(data.main.temp - 5); // Mock dew point
+    } else {
+        // Convert from Celsius to Fahrenheit
+        displayTemp = Math.round(celsiusToFahrenheit(data.main.temp));
+        displayFeelsLike = Math.round(celsiusToFahrenheit(data.main.feels_like));
+        displayDewPoint = Math.round(celsiusToFahrenheit(data.main.temp - 5)); // Mock dew point
+    }
+    
+    // Update main weather info
+    cityName.textContent = data.name;
+    temperature.textContent = `${displayTemp}°${currentUnit === 'metric' ? 'C' : 'F'}`;
+    description.textContent = data.weather[0].description;
+    feelsLike.textContent = `Feels like: ${displayFeelsLike}°${currentUnit === 'metric' ? 'C' : 'F'}`;
+    humidity.textContent = `${data.main.humidity}%`;
+    
+    // Convert wind speed
+    let windSpeedValue = data.wind.speed;
+    let windSpeedUnit = 'm/s';
+    
+    if (currentUnit === 'imperial') {
+        windSpeedValue = (windSpeedValue * 2.23694).toFixed(1); // m/s to mph
+        windSpeedUnit = 'mph';
+    }
+    windSpeed.textContent = `${windSpeedValue} ${windSpeedUnit}`;
+    
+    // Convert pressure
+    let pressureValue = data.main.pressure;
+    let pressureUnit = 'hPa';
+    
+    if (currentUnit === 'imperial') {
+        pressureValue = hPaToInHg(pressureValue).toFixed(2);
+        pressureUnit = 'inHg';
+    }
+    pressure.textContent = `${pressureValue} ${pressureUnit}`;
+    
+    // Update weather icon
+    const iconClass = iconMap[data.weather[0].icon] || 'fas fa-sun';
+    weatherIcon.className = iconClass;
+    
+    // Update additional info (non-temperature dependent)
+    visibility.textContent = `${(data.visibility / 1000).toFixed(1)} km`;
+    cloudiness.textContent = `${data.clouds.all}%`;
+    
+    // Wind direction
+    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    const index = Math.round(data.wind.deg / 22.5) % 16;
+    windDirection.textContent = directions[index];
+    
+    // Times (not unit dependent)
+    const sunriseTime = new Date(data.sys.sunrise * 1000);
+    const sunsetTime = new Date(data.sys.sunset * 1000);
+    sunrise.textContent = sunriseTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    sunset.textContent = sunsetTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    // Day length
+    const dayLengthMs = sunsetTime - sunriseTime;
+    const hours = Math.floor(dayLengthMs / (1000 * 60 * 60));
+    const minutes = Math.floor((dayLengthMs % (1000 * 60 * 60)) / (1000 * 60));
+    dayLength.textContent = `${hours}h ${minutes}m`;
+    
+    // Solar noon
+    const solarNoonTime = new Date(sunriseTime.getTime() + dayLengthMs / 2);
+    solarNoon.textContent = solarNoonTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    // Timezone
+    const timezoneOffset = data.timezone / 3600;
+    timezone.textContent = `UTC${timezoneOffset >= 0 ? '+' : ''}${timezoneOffset}`;
+    
+    // Mock values
+    uvIndex.textContent = Math.floor(Math.random() * 10) + 1;
+    dewPoint.textContent = `${displayDewPoint}°${currentUnit === 'metric' ? 'C' : 'F'}`;
+    
+    // Wind gust (convert if needed)
+    let windGustValue = data.wind.speed * 1.2;
+    if (currentUnit === 'imperial') {
+        windGustValue = (windGustValue * 2.23694).toFixed(1);
+    }
+    windGust.textContent = `${windGustValue} ${currentUnit === 'metric' ? 'm/s' : 'mph'}`;
+    
+    // Mock moon phase
+    const moonPhases = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 
+                       'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
+    moonPhase.textContent = moonPhases[Math.floor(Math.random() * moonPhases.length)];
+}
+
+// Update forecast UI
+function updateForecastUI(data) {
+    currentForecastData = data;
+    forecastContainer.innerHTML = '';
+    
+    // Get daily forecasts (one per day)
+    const dailyForecasts = [];
+    const processedDates = new Set();
+    
+    data.list.forEach(item => {
+        const date = new Date(item.dt * 1000).toLocaleDateString();
+        
+        if (!processedDates.has(date) && dailyForecasts.length < 5) {
+            dailyForecasts.push(item);
+            processedDates.add(date);
+        }
+    });
+    
+    dailyForecasts.forEach((forecast, index) => {
+        const forecastItem = document.createElement('div');
+        forecastItem.className = 'forecast-item';
+        
+        const day = document.createElement('div');
+        day.className = 'forecast-day';
+        day.textContent = getDayName(index + 1);
+        
+        const icon = document.createElement('div');
+        icon.className = 'forecast-icon';
+        
+        const iconClass = iconMap[forecast.weather[0].icon] || 'fas fa-sun';
+        const iconElement = document.createElement('i');
+        iconElement.className = iconClass;
+        icon.appendChild(iconElement);
+        
+        const temp = document.createElement('div');
+        temp.className = 'forecast-temp';
+        
+        // Convert temperature based on current unit
+        let displayTemp;
+        if (currentUnit === 'metric') {
+            displayTemp = Math.round(forecast.main.temp);
+        } else {
+            // Convert from Celsius to Fahrenheit
+            displayTemp = Math.round((forecast.main.temp * 9/5) + 32);
         }
         
-        // Update forecast UI
-        function updateForecastUI(data) {
-            forecastContainer.innerHTML = '';
-            
-            // Get daily forecasts (one per day)
-            const dailyForecasts = [];
-            const processedDates = new Set();
-            
-            data.list.forEach(item => {
-                const date = new Date(item.dt * 1000).toLocaleDateString();
-                
-                if (!processedDates.has(date) && dailyForecasts.length < 5) {
-                    dailyForecasts.push(item);
-                    processedDates.add(date);
-                }
-            });
-            
-            dailyForecasts.forEach((forecast, index) => {
-                const forecastItem = document.createElement('div');
-                forecastItem.className = 'forecast-item';
-                
-                const day = document.createElement('div');
-                day.className = 'forecast-day';
-                day.textContent = getDayName(index + 1);
-                
-                const icon = document.createElement('div');
-                icon.className = 'forecast-icon';
-                
-                const iconClass = iconMap[forecast.weather[0].icon] || 'fas fa-sun';
-                const iconElement = document.createElement('i');
-                iconElement.className = iconClass;
-                icon.appendChild(iconElement);
-                
-                const temp = document.createElement('div');
-                temp.className = 'forecast-temp';
-                temp.textContent = `${Math.round(forecast.main.temp)}°${currentUnit === 'metric' ? 'C' : 'F'}`;
-                
-                forecastItem.appendChild(day);
-                forecastItem.appendChild(icon);
-                forecastItem.appendChild(temp);
-                
-                forecastContainer.appendChild(forecastItem);
-            });
+        temp.textContent = `${displayTemp}°${currentUnit === 'metric' ? 'C' : 'F'}`;
+        
+        forecastItem.appendChild(day);
+        forecastItem.appendChild(icon);
+        forecastItem.appendChild(temp);
+        
+        forecastContainer.appendChild(forecastItem);
+    });
+}
+
+// Update hourly forecast UI
+function updateHourlyForecastUI(data) {
+   hourlyContainer.innerHTML = '';
+    
+    // Get next 24 hours of forecasts (8 data points, 3 hours apart)
+    const hourlyForecasts = data.list.slice(0, 8);
+    
+    hourlyForecasts.forEach(forecast => {
+        const hourlyItem = document.createElement('div');
+        hourlyItem.className = 'hourly-item';
+        
+        const time = document.createElement('div');
+        time.className = 'hourly-time';
+        
+        const forecastTime = new Date(forecast.dt * 1000);
+        time.textContent = forecastTime.toLocaleTimeString([], {hour: '2-digit'});
+        
+        const icon = document.createElement('div');
+        icon.className = 'hourly-icon';
+        
+        const iconClass = iconMap[forecast.weather[0].icon] || 'fas fa-sun';
+        const iconElement = document.createElement('i');
+        iconElement.className = iconClass;
+        icon.appendChild(iconElement);
+        
+        const temp = document.createElement('div');
+        temp.className = 'hourly-temp';
+        
+        // Convert temperature based on current unit
+        let displayTemp;
+        if (currentUnit === 'metric') {
+            displayTemp = Math.round(forecast.main.temp);
+        } else {
+            // Convert from Celsius to Fahrenheit
+            displayTemp = Math.round((forecast.main.temp * 9/5) + 32);
         }
         
-        // Update hourly forecast UI
-        function updateHourlyForecastUI(data) {
-            hourlyContainer.innerHTML = '';
-            
-            // Get next 24 hours of forecasts (8 data points, 3 hours apart)
-            const hourlyForecasts = data.list.slice(0, 8);
-            
-            hourlyForecasts.forEach(forecast => {
-                const hourlyItem = document.createElement('div');
-                hourlyItem.className = 'hourly-item';
-                
-                const time = document.createElement('div');
-                time.className = 'hourly-time';
-                
-                const forecastTime = new Date(forecast.dt * 1000);
-                time.textContent = forecastTime.toLocaleTimeString([], {hour: '2-digit'});
-                
-                const icon = document.createElement('div');
-                icon.className = 'hourly-icon';
-                
-                const iconClass = iconMap[forecast.weather[0].icon] || 'fas fa-sun';
-                const iconElement = document.createElement('i');
-                iconElement.className = iconClass;
-                icon.appendChild(iconElement);
-                
-                const temp = document.createElement('div');
-                temp.className = 'hourly-temp';
-                temp.textContent = `${Math.round(forecast.main.temp)}°${currentUnit === 'metric' ? 'C' : 'F'}`;
-                
-                hourlyItem.appendChild(time);
-                hourlyItem.appendChild(icon);
-                hourlyItem.appendChild(temp);
-                
-                hourlyContainer.appendChild(hourlyItem);
-            });
+        temp.textContent = `${displayTemp}°${currentUnit === 'metric' ? 'C' : 'F'}`;
+        
+        hourlyItem.appendChild(time);
+        hourlyItem.appendChild(icon);
+        hourlyItem.appendChild(temp);
+        
+        hourlyContainer.appendChild(hourlyItem);
+    });
+}
+
+// Update air quality UI
+function updateAirQualityUI(data) {
+    const aqi = data.list[0].main.aqi;
+    const components = data.list[0].components;
+    
+    // Set AQI value and color
+    aqiValue.textContent = aqi;
+    
+    // Set color based on AQI
+    const aqiColors = {
+        1: '#00e400', // Good - Green
+        2: '#ffff00', // Fair - Yellow
+        3: '#ff7e00', // Moderate - Orange
+        4: '#ff0000', // Poor - Red
+        5: '#8f3f97'  // Very Poor - Purple
+    };
+    
+    const aqiTitles = {
+        1: 'Good',
+        2: 'Fair',
+        3: 'Moderate',
+        4: 'Poor',
+        5: 'Very Poor'
+    };
+    
+    const aqiDescriptions = {
+        1: 'Air quality is satisfactory, and air pollution poses little or no risk.',
+        2: 'Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution.',
+        3: 'Members of sensitive groups may experience health effects. The general public is less likely to be affected.',
+        4: 'Some members of the general public may experience health effects; members of sensitive groups may experience more serious health effects.',
+        5: 'Health alert: The risk of health effects is increased for everyone.'
+    };
+    
+    aqiValue.style.backgroundColor = aqiColors[aqi] || '#cccccc';
+    aqiTitle.textContent = aqiTitles[aqi] || 'Unknown';
+    aqiDescription.textContent = aqiDescriptions[aqi] || 'Air quality data is not available.';
+    
+    // Update pollutant values
+    pm25.textContent = `${components.pm2_5.toFixed(1)} µg/m³`;
+    pm10.textContent = `${components.pm10.toFixed(1)} µg/m³`;
+    o3.textContent = `${components.o3.toFixed(1)} µg/m³`;
+    no2.textContent = `${components.no2.toFixed(1)} µg/m³`;
+    so2.textContent = `${components.so2.toFixed(1)} µg/m³`;
+    co.textContent = `${components.co.toFixed(1)} mg/m³`;
+}
+
+// Event listeners
+searchBtn.addEventListener('click', () => {
+    const city = cityInput.value.trim();
+    if (city) {
+        fetchWeatherData(city);
+    }
+});
+
+cityInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const city = cityInput.value.trim();
+        if (city) {
+            fetchWeatherData(city);
+        }
+    }
+});
+
+// Initialize map, update recent searches, and load default city on initial load
+window.addEventListener('load', () => {
+    initMap();
+    updateRecentSearchesUI();
+    fetchWeatherData('London');
+});
+
+// Search suggestions functionality
+function setupSearchSuggestions() {
+    const suggestionsContainer = document.createElement('div');
+    suggestionsContainer.className = 'suggestions-container';
+    cityInput.parentNode.appendChild(suggestionsContainer);
+
+    // Popular cities for suggestions
+    const popularCities = [
+        "London", "New York", "Tokyo", "Paris", "Sydney",
+        "Berlin", "Mumbai", "São Paulo", "Cairo", "Moscow",
+        "Toronto", "Dubai", "Singapore", "Seoul", "Mexico City",
+        "Beijing", "Bangkok", "Istanbul", "Lagos", "Buenos Aires",
+        "Los Angeles", "Chicago", "Madrid", "Rome", "Amsterdam"
+    ];
+
+    cityInput.addEventListener('input', function() {
+        const value = this.value.toLowerCase().trim();
+        
+        if (value.length < 2) {
+            suggestionsContainer.style.display = 'none';
+            return;
         }
         
-        // Update air quality UI
-        function updateAirQualityUI(data) {
-            const aqi = data.list[0].main.aqi;
-            const components = data.list[0].components;
-            
-            // Set AQI value and color
-            aqiValue.textContent = aqi;
-            
-            // Set color based on AQI
-            const aqiColors = {
-                1: '#00e400', // Good - Green
-                2: '#ffff00', // Fair - Yellow
-                3: '#ff7e00', // Moderate - Orange
-                4: '#ff0000', // Poor - Red
-                5: '#8f3f97'  // Very Poor - Purple
-            };
-            
-            const aqiTitles = {
-                1: 'Good',
-                2: 'Fair',
-                3: 'Moderate',
-                4: 'Poor',
-                5: 'Very Poor'
-            };
-            
-            const aqiDescriptions = {
-                1: 'Air quality is satisfactory, and air pollution poses little or no risk.',
-                2: 'Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution.',
-                3: 'Members of sensitive groups may experience health effects. The general public is less likely to be affected.',
-                4: 'Some members of the general public may experience health effects; members of sensitive groups may experience more serious health effects.',
-                5: 'Health alert: The risk of health effects is increased for everyone.'
-            };
-            
-            aqiValue.style.backgroundColor = aqiColors[aqi] || '#cccccc';
-            aqiTitle.textContent = aqiTitles[aqi] || 'Unknown';
-            aqiDescription.textContent = aqiDescriptions[aqi] || 'Air quality data is not available.';
-            
-            // Update pollutant values
-            pm25.textContent = `${components.pm2_5.toFixed(1)} µg/m³`;
-            pm10.textContent = `${components.pm10.toFixed(1)} µg/m³`;
-            o3.textContent = `${components.o3.toFixed(1)} µg/m³`;
-            no2.textContent = `${components.no2.toFixed(1)} µg/m³`;
-            so2.textContent = `${components.so2.toFixed(1)} µg/m³`;
-            co.textContent = `${components.co.toFixed(1)} mg/m³`;
+        const filteredCities = popularCities.filter(city => 
+            city.toLowerCase().includes(value)
+        );
+        
+        showSuggestions(filteredCities, suggestionsContainer);
+    });
+
+    function showSuggestions(suggestions, container) {
+        if (suggestions.length === 0) {
+            container.style.display = 'none';
+            return;
         }
         
-        // Event listeners
-        searchBtn.addEventListener('click', () => {
-            const city = cityInput.value.trim();
-            if (city) {
+        container.innerHTML = '';
+        suggestions.forEach(city => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.innerHTML = `<i class="fas fa-search"></i> ${city}`;
+            div.addEventListener('click', () => {
+                cityInput.value = city;
+                container.style.display = 'none';
                 fetchWeatherData(city);
-            }
+            });
+            container.appendChild(div);
         });
         
-        cityInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const city = cityInput.value.trim();
-                if (city) {
-                    fetchWeatherData(city);
-                }
-            }
-        });
+        container.style.display = 'block';
+    }
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!cityInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.style.display = 'none';
+        }
+    });
+
+    // Keyboard navigation for suggestions
+    cityInput.addEventListener('keydown', function(e) {
+        const items = suggestionsContainer.querySelectorAll('.suggestion-item');
+        let activeItem = suggestionsContainer.querySelector('.suggestion-item.active');
         
-        // Initialize map, update recent searches, and load default city on initial load
-        window.addEventListener('load', () => {
-            initMap();
-            updateRecentSearchesUI();
-            fetchWeatherData('London');
-        });
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!activeItem) {
+                items[0]?.classList.add('active');
+            } else {
+                activeItem.classList.remove('active');
+                const next = activeItem.nextElementSibling || items[0];
+                next.classList.add('active');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (activeItem) {
+                activeItem.classList.remove('active');
+                const prev = activeItem.previousElementSibling || items[items.length - 1];
+                prev.classList.add('active');
+            }
+        } else if (e.key === 'Enter' && activeItem) {
+            e.preventDefault();
+            activeItem.click();
+        }
+    });
+}
+
+// Add CSS for suggestions
+function addSuggestionsStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .suggestions-container {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--light);
+            border: 1px solid #ddd;
+            border-radius: 0 0 10px 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: var(--transition);
+        }
+        
+        .suggestion-item:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .search-container {
+            position: relative;
+        }
+        
+        .suggestion-item.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .dark-theme .suggestions-container {
+            background: #2d3748;
+            border-color: #4a5568;
+            color: var(--light);
+        }
+        
+        .dark-theme .suggestion-item {
+            border-bottom-color: #4a5568;
+        }
+        
+        .dark-theme .suggestion-item:hover {
+            background: var(--primary);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Initialize search suggestions
+setupSearchSuggestions();
+addSuggestionsStyles();
     </script>
 </body>
 </html>
