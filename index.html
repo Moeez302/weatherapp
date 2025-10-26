@@ -554,38 +554,6 @@
             background: var(--primary);
             color: white;
         }
-
-        /* Footer */
-        .footer {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: var(--card-shadow);
-            padding: 20px;
-            text-align: center;
-            color: var(--gray);
-        }
-
-        .api-info {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .api-status {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--success);
-        }
-
         /* Loading and Error States */
         .loading {
             text-align: center;
@@ -693,6 +661,93 @@
         body.dark-theme .map-controls button.secondary:hover {
             background: #2c3e50;
         }
+  .footer {
+            background: var(--light);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            padding: 25px;
+            text-align: center;
+            color: var(--gray);
+            transition: var(--transition);
+        }
+        
+        .footer:hover {
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .api-info {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(40, 167, 69, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            transition: var(--transition);
+        }
+        
+        .api-status:hover {
+            background: rgba(40, 167, 69, 0.15);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            min-width: 12px;
+            min-height: 12px;
+            border-radius: 50%;
+            background: var(--success);
+            flex-shrink: 0;
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .footer p:last-child {
+            margin-top: 10px;
+            font-size: 0.95rem;
+        }
+        /* Mobile-specific adjustments */
+        @media (max-width: 768px) {  
+        .api-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .status-dot {
+                width: 14px;
+                height: 14px;
+                min-width: 14px;
+                min-height: 14px;
+            }
+            
+            .footer {
+                padding: 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+              .status-dot {
+                width: 16px;
+                height: 16px;
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+            
     </style>
 </head>
 <body>
@@ -929,7 +984,7 @@
         </section>
 
         <!-- Footer -->
-        <footer class="footer">
+   <footer class="footer">
             <div class="api-info">
                 <p>Powered by OpenWeatherMap API & Leaflet Maps</p>
                 <div class="api-status">
